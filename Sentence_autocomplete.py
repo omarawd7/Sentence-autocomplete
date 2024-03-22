@@ -4,6 +4,8 @@ import os
 import nltk
 from nltk import trigrams
 import string  # Import string module for punctuation removal
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 def get_website_text(url):
     response = requests.get(url)
@@ -19,7 +21,7 @@ def collect_corpus(urls):
 
     return corpus
 
-# Example usage:
+# Collect corpus related to football sport:
 urls = [
     'https://www.bbc.com/sport/football/68619899',
     'https://www.bbc.com/sport/football/68561544',
@@ -104,18 +106,26 @@ for word1, word2, word3 in trigrams(corpus_tokens):
     else:
         trigram_freq[prefix] = {word3: 1}
 
-# Prompt the user to enter a sentence
-user_input = "mo salah mo"
-user_input=user_input.lower()
-# Split the user's input into words
-input_words = nltk.word_tokenize(user_input)
-# Retrieve the last two words of the input as the prefix for the trigram
-prefix = tuple(input_words[-2:])
+#Create an instance of the Flask class
+app = Flask(__name__)
+#Define a route for the root URL
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get the user_input from the request body
+    user_input = request.json['user_input']
+    
+    user_input=user_input.lower()
+    # Split the user's input into words
+    input_words = nltk.word_tokenize(user_input)
+    # Retrieve the last two words of the input as the prefix for the trigram
+    prefix = tuple(input_words[-2:])
+    # Get the top 5 predicted words
+    top_predicted_words = get_top_predicted_words(trigram_freq, prefix, n=5)    
+    # Return the top_predicted_words as a JSON response
+    return jsonify({'top_predicted_words': top_predicted_words})
 
-# Get the top 5 predicted words
-top_predicted_words = get_top_predicted_words(trigram_freq, prefix, n=5)
+cors = CORS(app)  # Enable CORS for all origins
+#cors = CORS(app, resources={"/predict": {"origins": ["http://localhost:8000"]}})
 
-# Print the top 5 predicted words
-print("Top 5 predicted words:")
-for word in top_predicted_words:
-    print(word)
+if __name__ == '__main__':
+    app.run()
